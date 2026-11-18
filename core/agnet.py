@@ -81,33 +81,21 @@ graph = builder.compile(checkpointer=memory)
 # ================= 6. 测试运行 =================
 if __name__ == '__main__':
     config = {"configurable": {"thread_id": "user_001"}}
+    print("Agent 已就绪")
 
     while True:
-        user_input = input("\n user: ")
+        user_input = input("\nUser: ")
         if user_input in ["退出", "exit", "quit"]:
-            print("再见！")
+            print("Agent: 再见！")
             break
 
         inputs = {"messages": [HumanMessage(content=user_input)]}
+        response_content = ""
 
-        # 执行图
         for event in graph.stream(inputs, config=config, stream_mode="values"):
             last_msg = event["messages"][-1]
-
-            # 👇 透视大模型的每一步
-            print(f"\n--- [调试] 节点类型: {last_msg.type} ---")
-
             if last_msg.type == "ai":
-                if last_msg.content:
-                    print(f"Agent 回复: {last_msg.content}")
-                if hasattr(last_msg, "tool_calls") and last_msg.tool_calls:
-                    print(f"Agent 发起了工具调用: {last_msg.tool_calls}")
-            elif last_msg.type == "tool":
-                print(f"工具 {last_msg.name} 返回: {last_msg.content}")
+                response_content = last_msg.content
 
-            if last_msg.type == "ai" and last_msg.content:
-                print(f"\n Agent: {last_msg.content}")
+        print(f"Agent: {response_content}")
 
-            # 只有没有工具调用且有大模型回复时，才打断
-            if last_msg.type == "ai" and not getattr(last_msg, "tool_calls", None):
-                break
