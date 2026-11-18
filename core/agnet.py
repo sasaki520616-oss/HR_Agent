@@ -30,7 +30,6 @@ llm = ChatOpenAI(
     temperature=0
 )
 
-# 把所有的工具（查询 + 提交工单）统一注册
 all_tools = wrap_tools_idempotent(db_tools + write_tools + [search_policy])
 llm_with_tools = llm.bind_tools(all_tools)
 
@@ -50,11 +49,9 @@ def call_model(state: AgentState):
 # ================= 4. 定义路由 =================
 def route_after_agent(state: AgentState):
     last_msg = state["messages"][-1]
-    # 如果模型没有调工具，直接结束当前轮
     if not hasattr(last_msg, "tool_calls") or not last_msg.tool_calls:
         return "end"
 
-    # 如果有工具调用，直接去执行
     return "execute_tools"
 
 
