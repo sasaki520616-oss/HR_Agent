@@ -17,7 +17,7 @@
 
 ## 📂 目录结构
 ```text
-├── core/           # LangGraph 核心主程序 (agent_v5.py)
+├── core/           # LangGraph 核心主程序 (agent.py)
 ├── tools/          # 工具模块
 │   ├── utils.py    # 公共连接与防重名装饰器
 │   ├── read_ops.py # 只读查询工具
