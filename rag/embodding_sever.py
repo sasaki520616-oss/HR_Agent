@@ -1,14 +1,16 @@
 import os
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com" # 防下载超时
-
+from pathlib import Path
 from fastapi import FastAPI
 from pydantic import BaseModel
 from FlagEmbedding import BGEM3FlagModel
 import uvicorn
 
+
 app = FastAPI()
 print("正在加载 BGE-M3，请稍候...")
-model_path = r"E:\rag-project\models\bge-m3"
+BASE_DIR = Path(__file__).resolve().parent.parent
+model_path = BASE_DIR / "models" / "bge-m3"
 # 如果后续有了显卡，把 device 改成 'cuda'，use_fp16=True
 model = BGEM3FlagModel(model_path, use_fp16=False, device='cpu')
 
