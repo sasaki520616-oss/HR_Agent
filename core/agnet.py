@@ -17,10 +17,11 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from tools.read_ops import db_tools
 from tools.write_ops import write_tools
 from rag.policy_tool import search_policy
-from tool_registry import wrap_tools_idempotent
 
 root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 prompt_path = os.path.join(root_dir, "system_prompt.md")
+with open(prompt_path, "r", encoding="utf-8") as f:
+    system_prompt = f.read()
 
 # =============== 1. 初始化环境 =================
 llm = ChatOpenAI(
@@ -30,7 +31,8 @@ llm = ChatOpenAI(
     temperature=0
 )
 
-all_tools = wrap_tools_idempotent(db_tools + write_tools + [search_policy])
+# 把所有的工具（查询 + 提交工单）统一注册
+all_tools = db_tools + write_tools + [search_policy]
 llm_with_tools = llm.bind_tools(all_tools)
 
 
@@ -41,7 +43,7 @@ class AgentState(TypedDict):
 
 # ================== 3. 定义节点 ==================
 def call_model(state: AgentState):
-    messages_with_system = [SystemMessage(content=prompt_path)] + state["messages"]
+    messages_with_system = [SystemMessage(content=system_prompt)] + state["messages"]
     response = llm_with_tools.invoke(messages_with_system)
     return {"messages": [response]}
 
@@ -49,9 +51,11 @@ def call_model(state: AgentState):
 # ================= 4. 定义路由 =================
 def route_after_agent(state: AgentState):
     last_msg = state["messages"][-1]
+    # 如果模型没有调工具，直接结束当前轮
     if not hasattr(last_msg, "tool_calls") or not last_msg.tool_calls:
         return "end"
 
+    # 如果有工具调用，直接去执行
     return "execute_tools"
 
 
@@ -95,4 +99,3 @@ if __name__ == '__main__':
                 response_content = last_msg.content
 
         print(f"Agent: {response_content}")
-
