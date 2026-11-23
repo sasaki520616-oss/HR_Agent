@@ -141,10 +141,9 @@ pip install -r requirements.txt
 
 运行前需要准备：
 
-- 已创建并配置好项目使用的 MySQL 数据库及相关表。
+- 运行前请先执行 init.sql 创建表结构,并配置好项目使用的 MySQL 数据库及相关表。
 - `.env` 中的数据库、DeepSeek 和 Embedding 配置正确。
 - 本地 BGE-M3 模型文件可用。
-- `rag/embodding_sever.py` 中的 `model_path` 当前是写死的 Windows 路径 `E:\rag-project\models\bge-m3`，在其他机器运行前需要改成实际模型路径。
 
 建议按以下顺序操作：
 
@@ -198,8 +197,7 @@ python -m tests.test_rag
 - 工资扣款申请工具尚未实现。
 - Worker 没有实现并发抢单/任务锁机制。Worker 审批通过后直接执行目标表的 SQL 修改，尚未加入执行前的人工复核（防止脏数据写入），后续可扩展。
 - RAG 尚未实现 BM25 与向量检索双路召回及融合排序。
-- Embedding 模型路径目前写死在 `embodding_sever.py` 中，尚未统一由配置管理。
-- 当前仓库未包含数据库建表 SQL和独立评估脚本；部署时需要自行准备数据库结构并进行验证。
+- 当前仓库未包含独立评估脚本；部署时需要自行进行验证。
 - FAISS 加载使用 `allow_dangerous_deserialization=True`，只应加载可信来源、自己构建的本地索引文件。
 
 ## 6. 安全与使用边界
