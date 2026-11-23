@@ -50,7 +50,6 @@
 - 批准后执行更新员工数据的 SQL，并开启事务。若执行异常则回滚，并把工单状态标记为 `FAILED`；若成功则标记为 `EXECUTED`；拒绝则标记为 `REJECTED`。
 - 每次循环独立创建和关闭数据库连接，防止长连接超时断连。
 
-** 当前代码也没有实现 Agent/Worker 使用不同数据库账号的读写权限隔离。
 
 ### 1.4 RAG 制度检索
 
@@ -64,7 +63,7 @@
 
 ### 1.5 工具测试
 
-当前测试流程由 `rests/` 下的两个文件组成：
+当前测试流程由 `tests/` 下的两个文件组成：
 
 1. `test_rag.py`：验证向量检索能否召回正确的制度文档，以及验证**相似度阈值过滤（Threshold Filtering）**能否成功拦截无关问题。
 2. `test_tools.py`：验证 MySQL 查询工具的正确性、重名处理逻辑、防注入截断逻辑，以及 AST 安全求值的恶意代码拦截。
@@ -100,12 +99,19 @@ HR_Agent/
 建议在项目根目录创建 `.env` 文件。下面是变量名称示例，请按自己的环境填写，不要将真实密钥提交到 Git 仓库。
 
 ```dotenv
-# MySQL
+# 1. MySQL配置
 DB_HOST=127.0.0.1
-DB_USER=your_db_user
-DB_PASSWORD=your_db_password
+DB_PORT=3306
 DB_NAME=your_database
 DB_CONN_TIMEOUT=5
+
+# 1.1 Agent 只读账号
+AGENT_DB_USER=your_db_user
+AGENT_DB_PASSWORD=your_db_password
+
+# Worker 管理账号
+WORKER_DB_USER=your_db_user
+WORKER_DB_PASSWORD=your_db_password
 
 # DeepSeek API
 DEEPSEEK_API_KEY=your_deepseek_api_key
@@ -124,8 +130,6 @@ RAG_CHUNK_SIZE=600
 RAG_CHUNK_OVERLAP=100
 RAG_TOP_K=3
 ```
-
-`config.py` 会读取上述变量。当前 `build_index.py` 中切片长度和重叠长度实际写为 `600` 和 `100`；虽然配置文件读取了 `RAG_CHUNK_SIZE`、`RAG_CHUNK_OVERLAP`，但当前构建脚本尚未使用这两个配置项。
 
 ## 4. 安装与运行
 
@@ -165,7 +169,7 @@ python -m rag.build_index
 **第三步：启动 Agent**
 
 ```bash
-python -m core.agnet
+python -m core.agent
 ```
 
 输入问题即可进行交互，输入 `exit`、`quit` 或 `退出` 结束。
@@ -192,7 +196,6 @@ python -m tests.test_rag
 
 - `tool_registry` 已废弃，当前 Agent 直接合并查询工具、写操作工具和 RAG 工具列表。
 - 工资扣款申请工具尚未实现。
-- Agent 与 Worker 的数据库读写权限隔离尚未实现；当前公共连接函数使用同一套 `DB_CONFIG`。
 - Worker 没有实现并发抢单/任务锁机制。Worker 审批通过后直接执行目标表的 SQL 修改，尚未加入执行前的人工复核（防止脏数据写入），后续可扩展。”
 - RAG 尚未实现 BM25 与向量检索双路召回及融合排序。
 - Embedding 模型路径目前写死在 `embodding_sever.py` 中，尚未统一由配置管理。
@@ -202,6 +205,6 @@ python -m tests.test_rag
 ## 6. 安全与使用边界
 
 - Agent 的写操作工具只负责创建工单，不应向用户声称业务数据已经修改。
-- 当前人工审批脚本和 Agent 仍使用同一套数据库连接配置，因此不能将当前实现描述为数据库层面的读写权限隔离。
+- Agent和人工审批脚本已实现数据库层面的读写权限隔离，Agent仅拥有select和insert权限，人工审批脚本则拥有全部权限。
 - 请勿将 `.env`、API Key、数据库密码、员工真实个人信息或未经脱敏的业务数据提交到公开仓库。
-- 当前项目是学习和验证用途的实现。投入真实企业环境前，还需要完善权限隔离、审批身份认证、并发控制、审计日志、异常恢复和自动化测试。
+- 当前项目是学习和验证用途的实现。投入真实企业环境前，还需要完善审批身份认证、并发控制、审计日志、异常恢复和自动化测试。
