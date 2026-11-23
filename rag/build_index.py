@@ -1,6 +1,5 @@
 from pathlib import Path
 from config import EMBED_CONFIG, RAG_CONFIG
-from langchain_core.documents import Document
 from langchain_community.document_loaders import PyPDFLoader, UnstructuredWordDocumentLoader, TextLoader
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
@@ -51,8 +50,8 @@ def split_documents(raw_docs):
     )
     # B. 通用递归切分器（用于 PDF/Word，以及 MD 超长段落的兜底）
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=600,
-        chunk_overlap=100,
+        chunk_size=RAG_CONFIG["chunk_size"],
+        chunk_overlap=RAG_CONFIG["chunk_overlap"],
         separators=["\n\n", "\n", "。", "！", "？", " ", ""]
     )
 
