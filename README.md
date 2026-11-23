@@ -77,7 +77,7 @@ HR_Agent/
 ├── core/
 │   └── agent.py             # LangGraph Agent 主程序
 ├── tests/
-│   ├── test_rag.py             #  RAG 检索层测试
+│   ├── test_rag.py             # RAG 检索层测试
 │   └── test_tools.py           # 工具层测试
 ├── tools/
 │   ├── read_ops.py             # MySQL 查询工具、部门统计、AST 计算器
