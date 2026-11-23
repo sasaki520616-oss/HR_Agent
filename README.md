@@ -43,13 +43,14 @@
 
 这两个工具调用 `submit_change_request()`，向 `change_requests` 表插入工单记录，并生成幂等键。它们的职责是**提交申请，不直接修改员工业务数据**。
 
-`worker/execute_service.py` 是独立的人工审批执行脚本。当前实现会查询一次 `PENDING` 工单，逐条通过终端 `input()` 等待人工输入：
+`worker/execute_service.py` 是独立的人工审批执行脚本，现已改造为**常驻后台轮询服务**：
+- 基于 `while True` 循环，每隔 5 秒自动查询一次 `change_requests` 表。
+- 使用 `SELECT ... LIMIT 1` 逐个消费 `PENDING` 状态的工单，避免大批量读取导致内存爆炸。
+- 采用终端 `input()` 交互，人工确认批准（y）或拒绝（n）。
+- 批准后执行更新员工数据的 SQL，并开启事务。若执行异常则回滚，并把工单状态标记为 `FAILED`；若成功则标记为 `EXECUTED`；拒绝则标记为 `REJECTED`。
+- 每次循环独立创建和关闭数据库连接，防止长连接超时断连。
 
-- 批准后，根据当前支持的动作执行员工状态或电话更新，并更新工单状态。
-- 拒绝后，将工单状态更新为 `REJECTED`。
-- 执行异常时回滚当前事务，并尝试将工单标记为 `FAILED`。
-
-**当前 Worker 是一次性、交互式处理脚本，不是持续运行的后台轮询服务。** 当前代码也没有实现 Agent/Worker 使用不同数据库账号的读写权限隔离。
+** 当前代码也没有实现 Agent/Worker 使用不同数据库账号的读写权限隔离。
 
 ### 1.4 RAG 制度检索
 
@@ -61,12 +62,23 @@
 
 当前检索使用 `similarity_search_with_score()`，代码中没有实现 BM25 与向量检索的双路召回。当前 Embedding 服务只返回 BGE-M3 的 dense 向量。
 
+### 1.5 工具测试
+
+当前测试流程由 `rests/` 下的两个文件组成：
+
+1. `test_rag.py`：验证向量检索能否召回正确的制度文档，以及验证**相似度阈值过滤（Threshold Filtering）**能否成功拦截无关问题。
+2. `test_tools.py`：验证 MySQL 查询工具的正确性、重名处理逻辑、防注入截断逻辑，以及 AST 安全求值的恶意代码拦截。
+
+
 ## 2. 项目目录
 
 ```text
 HR_Agent/
 ├── core/
-│   └── agnet_v5.py             # LangGraph Agent 主程序
+│   └── agent.py             # LangGraph Agent 主程序
+├── tests/
+│   ├── test_rag.py             #  RAG 检索层测试
+│   └── test_tools.py           # 工具层测试
 ├── tools/
 │   ├── read_ops.py             # MySQL 查询工具、部门统计、AST 计算器
 │   ├── write_ops.py            # 写操作申请工具、工单创建
@@ -75,15 +87,13 @@ HR_Agent/
 │   └── execute_service.py      # 人工审批及工单执行脚本
 ├── rag/
 │   ├── build_index.py          # 文档加载、切分、向量化和 FAISS 索引构建
-│   ├── embodding_sever.py      # BGE-M3 FastAPI Embedding 服务
+│   ├── embedding_sever.py      # BGE-M3 FastAPI Embedding 服务
 │   └── policy_tool.py          # FAISS 制度检索工具
 ├── config.py                   # 环境变量和路径配置
 ├── system_prompt.md            # Agent 系统提示词
 ├── requirements.txt            # Python 依赖
 └── README.md
 ```
-
-注：`agnet.py` 和 `embodding_sever.py` 是当前仓库中的实际文件名，暂时保留原名，避免文档路径与代码不一致。
 
 ## 3. 环境配置
 
@@ -168,7 +178,13 @@ python -m core.agnet
 python -m worker.execute_service
 ```
 
-当前脚本会读取当时已有的待审批工单，并在终端逐条询问是否批准。它不会持续监听新工单；有新申请时，需要再次运行脚本。
+启动后脚本会作为常驻后台服务运行，每隔 5 秒自动轮询 change_requests 表，发现 PENDING 工单即提请人工审批。输入 Ctrl+C 可退出。
+
+**第五步：工具测试**
+```bash
+python -m tests.test_tools
+python -m tests.test_rag
+```
 
 ## 5. 当前未实现或需要完善的部分
 
@@ -177,11 +193,10 @@ python -m worker.execute_service
 - `tool_registry` 已废弃，当前 Agent 直接合并查询工具、写操作工具和 RAG 工具列表。
 - 工资扣款申请工具尚未实现。
 - Agent 与 Worker 的数据库读写权限隔离尚未实现；当前公共连接函数使用同一套 `DB_CONFIG`。
-- Worker 尚未改造成持续运行的轮询服务，也没有实现并发抢单/任务锁机制。worker审批通过后agent直接修改sql表，需要再加一个人工审查修改是否正确，防止脏数据
+- Worker 没有实现并发抢单/任务锁机制。Worker 审批通过后直接执行目标表的 SQL 修改，尚未加入执行前的人工复核（防止脏数据写入），后续可扩展。”
 - RAG 尚未实现 BM25 与向量检索双路召回及融合排序。
-- `RAG_CHUNK_SIZE` 和 `RAG_CHUNK_OVERLAP` 配置尚未接入切片逻辑。
 - Embedding 模型路径目前写死在 `embodding_sever.py` 中，尚未统一由配置管理。
-- 当前仓库未包含数据库建表 SQL、自动化测试和独立评估脚本；部署时需要自行准备数据库结构并进行验证。
+- 当前仓库未包含数据库建表 SQL和独立评估脚本；部署时需要自行准备数据库结构并进行验证。
 - FAISS 加载使用 `allow_dangerous_deserialization=True`，只应加载可信来源、自己构建的本地索引文件。
 
 ## 6. 安全与使用边界
