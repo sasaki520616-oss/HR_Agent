@@ -1,7 +1,10 @@
 import json
 import time
-from tools.utils import get_connection
+import mysql.connector
+from config import WORKER_DB_CONFIG
 
+def get_connection():
+    return mysql.connector.connect(**WORKER_DB_CONFIG, use_pure=True)
 
 def process_requests():
     print("后台审批服务已启动，正在监听工单...")
