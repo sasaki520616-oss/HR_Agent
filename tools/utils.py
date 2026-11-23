@@ -1,4 +1,4 @@
-from config import DB_CONFIG
+from config import AGENT_DB_CONFIG
 import functools
 import mysql.connector
 import sys, os
@@ -6,7 +6,7 @@ import sys, os
 # ============== 建数据库连接、查重名装饰器 ===============
 
 def get_connection():
-    return mysql.connector.connect(**DB_CONFIG, use_pure=True)
+    return mysql.connector.connect(**AGENT_DB_CONFIG, use_pure=True)
 
 def handle_multiple_matches(func):
     @functools.wraps(func)
