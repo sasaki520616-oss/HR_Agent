@@ -11,19 +11,22 @@ load_dotenv(find_dotenv())  # 其他环境配置
 
 
 # 2. 数据库配置
-DB_CONFIG = {
+BASE_DB_CONFIG = {
     "host": os.getenv("DB_HOST"),
-    "user": os.getenv("DB_USER"),
-    "password": os.getenv("DB_PASSWORD"),
+    "port": os.getenv("DB_PORT"),
     "database": os.getenv("DB_NAME"),
-    "connection_timeout": int(os.getenv("DB_CONN_TIMEOUT", 5)) # 超时
+    "connection_timeout": int(os.getenv("DB_CONN_TIMEOUT", 5)), # 超时
 }
 
-if not DB_CONFIG["password"]:
-    raise ValueError(
-        f"找不到数据库密码。当前配置：DB_HOST={DB_CONFIG['host']},"
-        f"DB_USER={DB_CONFIG['user']},DB_NAME={DB_CONFIG['database']},"
-    )
+# 2.1. Agent 只读配置
+AGENT_DB_CONFIG = BASE_DB_CONFIG.copy()
+AGENT_DB_CONFIG["user"] = os.getenv("AGENT_DB_USER")
+AGENT_DB_CONFIG["password"] = os.getenv("AGENT_DB_PASSWORD")
+
+# 2.2. Worker 可写配置
+WORKER_DB_CONFIG = BASE_DB_CONFIG.copy()
+WORKER_DB_CONFIG["user"] = os.getenv("WORKER_DB_USER")
+WORKER_DB_CONFIG["password"] = os.getenv("WORKER_DB_PASSWORD")
 
 # 3. 大模型配置
 LLM_CONFIG = {
