@@ -1,20 +1,24 @@
 import json
+import time
 from tools.utils import get_connection
 
 
 def process_requests():
-    conn = get_connection()
-    cur = conn.cursor(dictionary=True)
+    print("后台审批服务已启动，正在监听工单...")
+    while True:
+        time.sleep(5)
 
-    try:
-        cur.execute("SELECT * FROM change_requests WHERE status = 'PENDING' ORDER BY id ASC")
-        pending = cur.fetchall()
+        conn = get_connection()
+        cur = conn.cursor(dictionary=True)
 
-        if not pending:
-            print("当前没有待审批的工单。")
-            return
+        try:
+            cur.execute("SELECT * FROM change_requests WHERE status = 'PENDING' ORDER BY id ASC limit 1")
+            req = cur.fetchone()
 
-        for req in pending:
+            if not req:
+                print("当前没有待审批的工单。")
+                continue
+
             print(f"\n================ [工单审批] ================")
             print(f"单号: {req['id']} | 动作: {req['action']}")
             print(f"申请理由: {req['reason']}")
@@ -40,22 +44,25 @@ def process_requests():
                     cur.execute("UPDATE change_requests SET status = 'EXECUTED', approved_by = 'admin' WHERE id = %s",
                                 (req['id'],))
                     conn.commit()
-                    print(f">>> ✅ 工单 {req['id']} 执行完毕。")
+                    print(f">>> 工单 {req['id']} 执行完毕。")
 
                 except Exception as e:
                     conn.rollback()
                     cur.execute("UPDATE change_requests SET status = 'FAILED' WHERE id = %s", (req['id'],))
                     conn.commit()
-                    print(f">>> ❌ 工单 {req['id']} 执行失败，已回滚: {str(e)}")
+                    print(f">>> 工单 {req['id']} 执行失败，已回滚: {str(e)}")
             else:
                 cur.execute("UPDATE change_requests SET status = 'REJECTED', approved_by = 'admin' WHERE id = %s",
                             (req['id'],))
                 conn.commit()
-                print(f">>> 🛑 工单 {req['id']} 已被拒绝。")
+                print(f">>>工单 {req['id']} 已被拒绝。")
 
-    finally:
-        cur.close()
-        conn.close()
+        except Exception as e:
+            print(f"工单处理发生异常: {e}")
+
+        finally:
+            cur.close()
+            conn.close()
 
 
 if __name__ == "__main__":
