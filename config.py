@@ -45,7 +45,7 @@ EMBED_CONFIG = {
 RAG_CONFIG = {
     "docs_dir": os.getenv("RAG_DOCS_DIR"),
     "index_dir": os.getenv("RAG_INDEX_DIR"),
-    "chunk_size": int(os.getenv("RAG_CHUNK_SIZE")),
-    "chunk_overlap": int(os.getenv("RAG_CHUNK_OVERLAP")),
-    "top_k": int(os.getenv("RAG_TOP_K"))
+    "chunk_size": os.getenv("RAG_CHUNK_SIZE"),
+    "chunk_overlap":os.getenv("RAG_CHUNK_OVERLAP"),
+    "top_k": os.getenv("RAG_TOP_K")
 }
