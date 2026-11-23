@@ -155,7 +155,7 @@ python -m rag.build_index
 **第三步：启动 Agent**
 
 ```bash
-python -m core.agnet_v5
+python -m core.agnet
 ```
 
 输入问题即可进行交互，输入 `exit`、`quit` 或 `退出` 结束。
