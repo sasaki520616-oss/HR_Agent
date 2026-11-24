@@ -1,0 +1,50 @@
+# 密钥环境变量
+.env
+.env.*
+!.env.example
+
+# github密钥（十一月二十几过期）
+PAT.txt
+
+# BGE-M3 模型
+models/
+
+# FAISS向量索引（你的项目重点！自动生成，不上传）
+faiss_index/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.coverage
+.pytest_cache/
+htmlcov/
+
+# 虚拟环境
+venv/
+.venv/
+env/
+ENV/
+
+# PyCharm
+.idea/
+*.iml
+
+# 打包、缓存
+dist/
+build/
+*.egg-info/
+.mypy_cache/
+ruff_cache/
+
+# 日志
+*.log
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# sql
+data/sql/
+*.sql.bak
