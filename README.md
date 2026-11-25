@@ -123,7 +123,7 @@ EMBED_MODEL_NAME=bge-m3
 EMBED_BASE_URL=http://127.0.0.1:8080/v1
 EMBED_API_KEY=EMPTY
 
-# RAG 路径及检索参数（相对于项目根目录）
+# RAG 路径及检索参数
 RAG_DOCS_DIR=data/docs
 RAG_INDEX_DIR=data/faiss_index
 RAG_CHUNK_SIZE=600
@@ -136,6 +136,7 @@ RAG_TOP_K=3
 先创建并激活 Python 虚拟环境，再安装依赖：
 
 ```bash
+python -3.11 -m venv .venv
 pip install -r requirements.txt
 ```
 

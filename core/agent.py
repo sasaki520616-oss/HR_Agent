@@ -95,7 +95,7 @@ if __name__ == '__main__':
         for event in graph.stream(inputs, config=config, stream_mode="values"):
             last_msg = event["messages"][-1]
 
-            # 👇 透视大模型的每一步
+            # 透视大模型的每一步
             print(f"\n--- [调试] 节点类型: {last_msg.type} ---")
 
             if last_msg.type == "ai":
