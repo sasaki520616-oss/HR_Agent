@@ -56,7 +56,7 @@
 当前 RAG 流程由 `rag/` 下的三个文件组成：
 
 1. `build_index.py`：扫描文档目录，加载 PDF、Word、Markdown 文件；Markdown 先按标题切分，再使用递归切分器处理过长文本；其他文档使用递归切分器。
-2. `embodding_sever.py`：通过 FastAPI 暴露兼容 OpenAI Embeddings 格式的 `/v1/embeddings` 接口，使用本地 BGE-M3 模型生成 dense 向量。
+2. `embedding_sever.py`：通过 FastAPI 暴露兼容 OpenAI Embeddings 格式的 `/v1/embeddings` 接口，使用本地 BGE-M3 模型生成 dense 向量。
 3. `policy_tool.py`：加载本地 FAISS 索引，根据问题执行相似度检索，可选按来源文件过滤，并返回检索文本及来源。
 
 当前检索使用 `similarity_search_with_score()`，代码中没有实现 BM25 与向量检索的双路召回。当前 Embedding 服务只返回 BGE-M3 的 dense 向量。
@@ -151,7 +151,7 @@ pip install -r requirements.txt
 **第一步：启动 Embedding 服务**
 
 ```bash
-python -m rag.embodding_sever
+python -m rag.embedding_sever
 ```
 
 服务默认监听 `0.0.0.0:8080`，Embedding 客户端配置的 API 地址应与实际服务地址对应。
@@ -193,12 +193,9 @@ python -m tests.test_rag
 ## 5. 当前未实现或需要完善的部分
 
 以下内容属于后续规划，不应视为当前版本已经具备的功能：
-
-- `tool_registry` 已废弃，当前 Agent 直接合并查询工具、写操作工具和 RAG 工具列表。
-- 工资扣款申请工具尚未实现。
 - Worker 没有实现并发抢单/任务锁机制。Worker 审批通过后直接执行目标表的 SQL 修改，尚未加入执行前的人工复核（防止脏数据写入），后续可扩展。
 - RAG 尚未实现 BM25 与向量检索双路召回及融合排序。
-- 当前仓库未包含独立评估脚本；部署时需要自行进行验证。
+- MemorySaver是存在于内存的短期记忆模块，并发能力差，可能导致内存爆炸，未实现持久化存储机制。
 - FAISS 加载使用 `allow_dangerous_deserialization=True`，只应加载可信来源、自己构建的本地索引文件。
 
 ## 6. 安全与使用边界
