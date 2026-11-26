@@ -109,21 +109,21 @@ DB_CONN_TIMEOUT=5
 AGENT_DB_USER=your_db_user
 AGENT_DB_PASSWORD=your_db_password
 
-# Worker 管理账号
+# 1.2 Worker 管理账号
 WORKER_DB_USER=your_db_user
 WORKER_DB_PASSWORD=your_db_password
 
-# DeepSeek API
+# 2. DeepSeek API
 DEEPSEEK_API_KEY=your_deepseek_api_key
 DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
 DEEPSEEK_MODEL=deepseek-chat
 
-# Embedding 服务客户端配置
+# 3. Embedding 服务客户端配置
 EMBED_MODEL_NAME=bge-m3
 EMBED_BASE_URL=http://127.0.0.1:8080/v1
 EMBED_API_KEY=EMPTY
 
-# RAG 路径及检索参数
+# 4. RAG 路径及检索参数
 RAG_DOCS_DIR=data/docs
 RAG_INDEX_DIR=data/faiss_index
 RAG_CHUNK_SIZE=600
