@@ -45,7 +45,7 @@ test_cases = [
         "name": "查年龄工龄",
         "func": get_employee_age.invoke,
         "args": {"name": "张丽"},
-        "assert": lambda res: "age" in res and "word_years" in res,
+        "assert": lambda res: "age" in res and "tenure_years" in res,
         "desc": "查张丽的年龄和工龄"
     },
 
