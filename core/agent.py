@@ -28,7 +28,7 @@ llm = ChatOpenAI(
     model=LLM_CONFIG["model"],
     api_key=LLM_CONFIG["api_key"],
     base_url=LLM_CONFIG["base_url"],
-    temperature=0
+    temperature=0.1
 )
 
 # 把所有的工具（查询 + 提交工单）统一注册

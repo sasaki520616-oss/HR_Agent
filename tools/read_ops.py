@@ -5,6 +5,17 @@ import operator
 from langchain_core.tools import tool
 from tools.utils import get_connection, handle_multiple_matches
 
+def _get_existing_departments():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("select dept_name from departments")
+        return [row[0] for row in cur.fetchall()]
+    finally:
+        cur.close()
+        conn.close()
+
 
 # ============ 基础信息查询工具 ===================
 @tool
@@ -58,7 +69,10 @@ def get_employee_contact(name: str = None, employee_no: str = None):
         rec = cur.fetchone()
         if rec is None:
             return {"error": f"未找到该员工的通讯方式，请重新确认其姓名或工号。"}
-        return rec
+        if rec.get('phone') is None:
+            rec['phone'] = '无'
+        if rec.get('email') is None:
+            rec['email'] = '无'
 
     finally:
         cur.close()
@@ -102,6 +116,14 @@ def get_department_members(dept_name: str):
     conn = get_connection()
     cur = conn.cursor(dictionary=True)
     try:
+        existing = _get_existing_departments()
+        if dept_name not in existing:
+            return {
+                "error": "部门不存在",
+                "available_departments": existing,
+                "hint": f"没有找到'{dept_name}',可用部门有：{', '.join(existing)}，请确认后重试。"
+            }
+
         cur.execute("""
         select e.name
         from employees e
@@ -112,7 +134,7 @@ def get_department_members(dept_name: str):
         recs = cur.fetchall()
 
         if not recs:
-            return {"error": f"未找到部门 '{dept_name}' 或该部门无在职员工。"}
+            return {"status": "empty", "message": f"部门 '{dept_name}' 存在，但目前无在职员工。"}
 
         if len(recs) == 21:
             return {
@@ -192,10 +214,20 @@ def get_department_stats(dept_name: str, stat_type: str) -> dict:
       - "avg_tenure": 统计部门平均工龄（年）。空部门返回 error。
       - "gender_count": 统计部门男女人数分布。
     """
+
     conn = get_connection()
     cur = conn.cursor(dictionary=True)
 
     try:
+        # 判断部门存不存在
+        existing = _get_existing_departments()
+        if dept_name not in existing:
+            return {
+                "error": "未找到该部门",
+                "available": existing,
+                "hint": f"没有找到'{dept_name}',可用部门有：{', '.join(existing)}，请确认后重试。"
+            }
+
         base_join = """
             FROM employees e
             JOIN departments d ON e.department_id = d.id
@@ -209,8 +241,6 @@ def get_department_stats(dept_name: str, stat_type: str) -> dict:
                 GROUP BY e.gender
             """, (dept_name,))
             recs = cur.fetchall()
-            if not recs:
-                return {"error": f"未找到部门 '{dept_name}' 的有效数据。"}
 
             gender_stats = {"男": 0, "女": 0}
             unknown = []
@@ -234,7 +264,7 @@ def get_department_stats(dept_name: str, stat_type: str) -> dict:
             if unknown:
                 result["data_quality_warning"] = {
                     "message": "检测到不符合 M/F 契约的 gender 值，请检查数据源",
-                    "rows": unknown,
+                    "rows": unknown
                 }
             return result
 
@@ -253,14 +283,17 @@ def get_department_stats(dept_name: str, stat_type: str) -> dict:
         cur.execute(sql, (dept_name,))
         rec = cur.fetchone()
 
+        if rec is None :
+            return {"error":"未获取到统计数据。"}
+
+        if rec['result'] is None:
+            return {"error":"该部门暂无有效数据（可能无员工或某员工出生日期缺失)"}
+
         if stat_type == "count":
-            n = rec["result"] if rec else 0
+            n = rec["result"]
             return {"dept_name": dept_name, "stat_type": "count",
                     "result": n, "unit": "人",
                     "message": f"{dept_name}共 {n} 人" + ("（部门无在职员工）" if n == 0 else "")}
-
-        if rec is None or rec['result'] is None:
-            return {"error": f"未找到部门 '{dept_name}' 的有效统计数据（可能无人或日期缺失）。"}
 
         return {
             "dept_name": dept_name,
