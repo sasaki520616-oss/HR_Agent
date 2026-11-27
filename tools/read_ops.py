@@ -73,6 +73,7 @@ def get_employee_contact(name: str = None, employee_no: str = None):
             rec['phone'] = '无'
         if rec.get('email') is None:
             rec['email'] = '无'
+        return rec
 
     finally:
         cur.close()
@@ -162,7 +163,6 @@ def get_employee_attendance(work_date: str, name: str = None, employee_no: str =
         from attendance a
         join employees e on a.employee_id = e.id
         where a.work_date = %s and e.employee_no = %s and e.status = 'active'
-        limit 20
         """, (work_date, employee_no))
         rec = cur.fetchone()
         if rec is None:

@@ -23,7 +23,7 @@ def handle_multiple_matches(func):
         cur = conn.cursor(dictionary=True)
         try:
             cur.execute("""
-                select e.id, e.employee_no, e.name, d.dept_name, p.title 
+                select e.employee_no, e.name, d.dept_name, p.title 
                 from employees e
                 left join departments d ON e.department_id = d.id
                 left join positions p ON e.position_id = p.id

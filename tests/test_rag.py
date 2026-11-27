@@ -53,6 +53,7 @@ def run_tests():
                 # 期望是查不到的（防幻觉）
                 if is_miss:
                     print(f"[PASS] {name} - 成功拦截无关问题")
+                    print(f"   [检索返回]: {result}")
                     passed += 1
                 else:
                     print(f"[FAIL] {name} - 期望拦截，但检索到了内容")
@@ -61,6 +62,7 @@ def run_tests():
                 # 期望是查得到的
                 if not is_miss and len(result) > 10:
                     print(f"[PASS] {name} - 成功检索到制度")
+                    print(f"   [检索返回]: {result}")
                     passed += 1
                 else:
                     print(f"[FAIL] {name} - 期望检索到内容，但返回了兜底或为空")

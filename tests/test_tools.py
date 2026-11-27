@@ -7,7 +7,10 @@ from tools.read_ops import (
     get_employee_info,
     get_employee_contact,
     get_employee_age,
+    get_department_members,
     get_department_stats,
+    get_employee_attendance,
+    get_employee_attendance_history,
     calculate,
     get_current_date
 )
@@ -48,13 +51,40 @@ test_cases = [
         "assert": lambda res: "age" in res and "tenure_years" in res,
         "desc": "查张丽的年龄和工龄"
     },
-
+    {
+        "name": "查年龄工龄-不存在",
+        "func": get_employee_age.invoke,
+        "args": {"name": "李丽"},
+        "assert": lambda res: "age" in res and "tenure_years" in res,
+        "desc": "查空的联系方式应返回 error 字典，不能崩溃"
+    },
+    {
+        "name": "查部门成员",
+        "func": get_department_members.invoke,
+        "args": {"dept_name": "前端研发组"},
+        "assert": lambda res: "success" in res["status"],
+        "desc": "返回部门成员字典"
+    },
     {
         "name": "部门聚合统计",
         "func": get_department_stats.invoke,
         "args": {"dept_name": "前端研发组", "stat_type": "count"},
         "assert": lambda res: "result" in res,
         "desc": "SQL 原生聚合不报错"
+    },
+    {
+        "name": "黄强考勤信息",
+        "func": get_employee_attendance.invoke,
+        "args": {"work_date": "2026-11-02", "name": "黄强"},
+        "assert": lambda res: "status" in res,
+        "desc": "返回11月2日黄强的考勤信息"
+    },
+    {
+        "name": "黄强考勤信息统计",
+        "func": get_employee_attendance_history.invoke,
+        "args": {"month_state": "2026-10", "name": "黄强"},
+        "assert": lambda res: "status" in res,
+        "desc": "返回10月份黄强的考勤情况"
     },
     {
         "name": "AST计算器-正常",

@@ -11,7 +11,7 @@
  Target Server Version : 80038
  File Encoding         : 65001
 
- Date: 23/11/2026 17:21:13
+ Date: 27/11/2026 11:26:09
 */
 
 SET NAMES utf8mb4;
@@ -42,7 +42,7 @@ DROP TABLE IF EXISTS `attendance_history`;
 CREATE TABLE `attendance_history`  (
   `id` int(0) NOT NULL AUTO_INCREMENT,
   `employee_id` int(0) DEFAULT NULL,
-  `stat_month` varchar(7) CHARACTER SET utf8mb3 COLLATE utf8mb3_bin NOT NULL,
+  `month_state` varchar(7) CHARACTER SET utf8mb3 COLLATE utf8mb3_bin NOT NULL,
   `normal_days` int(0) DEFAULT 0,
   `late_count` int(0) DEFAULT 0,
   `early_leave_count` int(0) DEFAULT 0,
@@ -70,31 +70,7 @@ CREATE TABLE `change_requests`  (
   `updated_at` datetime(0) NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP(0),
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `idempotency_key`(`idempotency_key`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb3 COLLATE = utf8mb3_bin ROW_FORMAT = Dynamic;
-
--- ----------------------------
--- Table structure for department_change_requests
--- ----------------------------
-DROP TABLE IF EXISTS `department_change_requests`;
-CREATE TABLE `department_change_requests`  (
-  `id` int(0) NOT NULL AUTO_INCREMENT,
-  `employee_id` int(0) NOT NULL,
-  `from_dept_id` int(0) DEFAULT NULL,
-  `to_dept_id` int(0) NOT NULL,
-  `reason` text CHARACTER SET utf8mb3 COLLATE utf8mb3_bin,
-  `status` enum('pending','approved','rejected') CHARACTER SET utf8mb3 COLLATE utf8mb3_bin DEFAULT 'pending',
-  `requested_by` int(0) DEFAULT NULL,
-  `reviewed_by` int(0) DEFAULT NULL,
-  `created_at` timestamp(0) DEFAULT CURRENT_TIMESTAMP,
-  `reviewed_at` timestamp(0) DEFAULT NULL,
-  PRIMARY KEY (`id`) USING BTREE,
-  INDEX `fk_req_emp`(`employee_id`) USING BTREE,
-  INDEX `fk_req_from`(`from_dept_id`) USING BTREE,
-  INDEX `fk_req_to`(`to_dept_id`) USING BTREE,
-  CONSTRAINT `fk_req_emp` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
-  CONSTRAINT `fk_req_from` FOREIGN KEY (`from_dept_id`) REFERENCES `departments` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
-  CONSTRAINT `fk_req_to` FOREIGN KEY (`to_dept_id`) REFERENCES `departments` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb3 COLLATE = utf8mb3_bin ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb3 COLLATE = utf8mb3_bin ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for departments
@@ -113,7 +89,7 @@ CREATE TABLE `departments`  (
   UNIQUE INDEX `dept_code`(`dept_code`) USING BTREE,
   INDEX `fk_dept_parent`(`parent_id`) USING BTREE,
   CONSTRAINT `fk_dept_parent` FOREIGN KEY (`parent_id`) REFERENCES `departments` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 8 CHARACTER SET = utf8mb3 COLLATE = utf8mb3_bin ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb3 COLLATE = utf8mb3_bin ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for employees
@@ -146,7 +122,7 @@ CREATE TABLE `employees`  (
   CONSTRAINT `fk_emp_dept` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fk_emp_manager` FOREIGN KEY (`manager_id`) REFERENCES `employees` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT,
   CONSTRAINT `fk_emp_pos` FOREIGN KEY (`position_id`) REFERENCES `positions` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 100048 CHARACTER SET = utf8mb3 COLLATE = utf8mb3_bin ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 100047 CHARACTER SET = utf8mb3 COLLATE = utf8mb3_bin ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for positions
@@ -160,6 +136,6 @@ CREATE TABLE `positions`  (
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `title`(`title`) USING BTREE,
   UNIQUE INDEX `uk_pos_title`(`title`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 13 CHARACTER SET = utf8mb3 COLLATE = utf8mb3_bin ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 12 CHARACTER SET = utf8mb3 COLLATE = utf8mb3_bin ROW_FORMAT = Dynamic;
 
 SET FOREIGN_KEY_CHECKS = 1;
