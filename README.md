@@ -34,21 +34,14 @@
 
 部门统计由 SQL 聚合完成，不要求模型读取名单后自行计算。部门名单查询使用 `LIMIT 21` 判断是否超过展示上限，并最多返回 20 条。
 
-### 1.3 写操作申请与工单审批
+### 1.3 写操作申请与人工审批系统 (HITL)
 
-`tools/write_ops.py` 当前提供两个写操作申请工具：
+`tools/write_ops.py` 提供写操作申请工具（`request_offboard`、`request_update_phone`）。Agent 调用这些工具时**不会直接修改业务表**，而是通过 `submit_change_request()` 生成一条 `PENDING` 状态的工单插入 `change_requests` 表。在插入前，系统会抓取当前数据的 `old_data` 快照，并生成 `idempotency_key` 防重复提交。
 
-- `request_offboard`：提交员工离职申请。
-- `request_update_info`：提交员工联系方式修改申请。
+工单审批与执行采用**基于状态机的双端解耦架构**（`worker/` 目录）：
 
-这两个工具调用 `submit_change_request()`，向 `change_requests` 表插入工单记录，并生成幂等键。它们的职责是**提交申请，不直接修改员工业务数据**。
-
-`worker/execute_service.py` 是独立的人工审批执行脚本，现已改造为**常驻后台轮询服务**：
-- 基于 `while True` 循环，每隔 5 秒自动查询一次 `change_requests` 表。
-- 使用 `SELECT ... LIMIT 1` 逐个消费 `PENDING` 状态的工单，避免大批量读取导致内存爆炸。
-- 采用终端 `input()` 交互，人工确认批准（y）或拒绝（n）。
-- 批准后执行更新员工数据的 SQL，并开启事务。若执行异常则回滚，并把工单状态标记为 `FAILED`；若成功则标记为 `EXECUTED`；拒绝则标记为 `REJECTED`。
-- 每次循环独立创建和关闭数据库连接，防止长连接超时断连。
+- **审批端 (`worker/review_service.py`)**：常驻轮询 `PENDING` 或 `HOLD` 工单（每次 `LIMIT 10` 遍历）。终端展示原数据快照与目标修改对比，支持操作：(y) 批准、(n) 拒绝、(p) 挂起(HOLD)。审批端仅负责状态流转，不执行具体 SQL。
+- **执行端 (`worker/execute_service.py`)**：常驻轮询 `APPROVED` 工单。通过 `UPDATE ... WHERE status = 'APPROVED'` 实现**乐观锁抢单防并发**。执行逻辑通过 `worker/db_handlers.py` 中的**字典注册表（策略模式）**解耦调用，避免 `if/elif` 冗长分支。执行后校验 `cur.rowcount` 防止目标不存在或未更新却标记成功的伪逻辑。成功标记 `EXECUTED`，异常则回滚并标记 `FAILED`。
 
 
 ### 1.4 RAG 制度检索
@@ -56,7 +49,7 @@
 当前 RAG 流程由 `rag/` 下的三个文件组成：
 
 1. `build_index.py`：扫描文档目录，加载 PDF、Word、Markdown 文件；Markdown 先按标题切分，再使用递归切分器处理过长文本；其他文档使用递归切分器。
-2. `embedding_sever.py`：通过 FastAPI 暴露兼容 OpenAI Embeddings 格式的 `/v1/embeddings` 接口，使用本地 BGE-M3 模型生成 dense 向量。
+2. `embedding_server.py`：通过 FastAPI 暴露兼容 OpenAI Embeddings 格式的 `/v1/embeddings` 接口，使用本地 BGE-M3 模型生成 dense 向量。
 3. `policy_tool.py`：加载本地 FAISS 索引，根据问题执行相似度检索，可选按来源文件过滤，并返回检索文本及来源。
 
 当前检索使用 `similarity_search_with_score()`，代码中没有实现 BM25 与向量检索的双路召回。当前 Embedding 服务只返回 BGE-M3 的 dense 向量。
@@ -83,10 +76,12 @@ HR_Agent/
 │   ├── write_ops.py            # 写操作申请工具、工单创建
 │   └── utils.py                # 数据库连接、员工重名处理
 ├── worker/
-│   └── execute_service.py      # 人工审批及工单执行脚本
+│   ├── review_service.py       # 人工审批终端（状态流转，支持 HOLD 挂起）
+│   ├── execute_service.py      # 后台执行器（乐观锁抢单，事务更新）
+│   └── db_handlers.py          # 策略模式处理函数（具体业务 SQL 隔离）
 ├── rag/
 │   ├── build_index.py          # 文档加载、切分、向量化和 FAISS 索引构建
-│   ├── embedding_sever.py      # BGE-M3 FastAPI Embedding 服务
+│   ├── embedding_server.py      # BGE-M3 FastAPI Embedding 服务
 │   └── policy_tool.py          # FAISS 制度检索工具
 ├── config.py                   # 环境变量和路径配置
 ├── system_prompt.md            # Agent 系统提示词
@@ -151,7 +146,7 @@ pip install -r requirements.txt
 **第一步：启动 Embedding 服务**
 
 ```bash
-python -m rag.embedding_sever
+python -m rag.embedding_server
 ```
 
 服务默认监听 `0.0.0.0:8080`，Embedding 客户端配置的 API 地址应与实际服务地址对应。
@@ -176,13 +171,12 @@ python -m core.agent
 
 **第四步：处理待审批工单**
 
-在另一个终端执行：
+在另外两个终端分别执行（按需启动）：
 
 ```bash
+python -m worker.review_service
 python -m worker.execute_service
 ```
-
-启动后脚本会作为常驻后台服务运行，每隔 5 秒自动轮询 change_requests 表，发现 PENDING 工单即提请人工审批。输入 Ctrl+C 可退出。
 
 **第五步：工具测试**
 ```bash
@@ -193,14 +187,16 @@ python -m tests.test_rag
 ## 5. 当前未实现或需要完善的部分
 
 以下内容属于后续规划，不应视为当前版本已经具备的功能：
-- Worker 没有实现并发抢单/任务锁机制。Worker 审批通过后直接执行目标表的 SQL 修改，尚未加入执行前的人工复核（防止脏数据写入），后续可扩展。
-- RAG 尚未实现 BM25 与向量检索双路召回及融合排序。
-- MemorySaver是存在于内存的短期记忆模块，并发能力差，可能导致内存爆炸，未实现持久化存储机制。
-- FAISS 加载使用 `allow_dangerous_deserialization=True`，只应加载可信来源、自己构建的本地索引文件。
+- **HOLD 状态的长期死锁风险**：若员工一直不处理 HOLD 工单，系统不会自动清理。后续可增加 `review_count` 字段，超限时自动流转或告警。
+- **审批交互终端化**：当前审批仅在终端进行 `input()` 交互，尚未接入 Web UI 或企业微信/飞书审批卡片，未来可做异步通知改造。
+- **RAG** 尚未实现 BM25 与向量检索双路召回及融合排序。
+- **MemorySaver** 是存在于内存的短期记忆模块，并发能力差，可能导致内存爆炸，未实现持久化存储机制。
+- **FAISS** 加载使用 `allow_dangerous_deserialization=True`，只应加载可信来源、自己构建的本地索引文件。
 
 ## 6. 安全与使用边界
 
-- Agent 的写操作工具只负责创建工单，不应向用户声称业务数据已经修改。
-- Agent和人工审批脚本已实现数据库层面的读写权限隔离，Agent仅拥有select和insert权限，人工审批脚本则拥有全部权限。
-- 请勿将 `.env`、API Key、数据库密码、员工真实个人信息或未经脱敏的业务数据提交到公开仓库。
-- 当前项目是学习和验证用途的实现。投入真实企业环境前，还需要完善审批身份认证、并发控制、审计日志、异常恢复和自动化测试。
+- **最小权限隔离**：Agent 数据库账号仅拥有 `SELECT` 和 `INSERT` 权限，无法直接修改业务表数据；后台 Worker 拥有修改权限，仅通过安全流转的工单执行变更。
+- **数据审计与快照**：提交修改申请时自动留存 `old_data` 原数据快照，审批端可直观对比修改前后差异，避免误批，也为未来实现“一键回滚”提供数据基础。
+- **并发与防重防御**：写操作使用 `idempotency_key` 幂等键防止大模型重复提交；执行端基于数据库乐观锁（状态流转校验）实现防并发抢单，防止多进程重复消费。
+- **数据与隐私保护**：请勿将 `.env`、API Key、数据库密码、员工真实个人信息或未经脱敏的业务数据提交到公开仓库。
+- **边界说明**：当前项目为学习和验证用途，虽已实现基础的状态机与并发防御，但投入真实企业环境前，仍需完善审批身份认证（如 SSO）、分布式锁（如 Redis）、审计日志落库及自动化集成测试。
