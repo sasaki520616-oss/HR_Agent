@@ -3,7 +3,6 @@ import time
 import mysql.connector
 from config import WORKER_DB_CONFIG
 
-
 def get_connection():
     return mysql.connector.connect(**WORKER_DB_CONFIG, use_pure=True)
 
@@ -65,7 +64,6 @@ def review_requests():
                     cur.execute("UPDATE change_requests SET status = 'HOLD' WHERE id = %s", (req['id'],))
                     print(f">>> 工单 {req['id']} 已挂起。")
                     continue
-
             conn.commit()
 
         except Exception as e:

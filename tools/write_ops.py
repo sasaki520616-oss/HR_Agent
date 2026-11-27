@@ -58,7 +58,7 @@ def request_update_phone(name: str = None, employee_no: str = None, new_phone: s
         conn.close()
 
     payload = {"employee_no": employee_no, "phone": new_phone}
-    return submit_change_request("update_info", payload, old_data=old_data, reason=reason)
+    return submit_change_request("update_phone", payload, old_data=old_data, reason=reason)
 
 write_tools = [
     request_offboard,
