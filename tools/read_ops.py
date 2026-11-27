@@ -99,10 +99,10 @@ def get_employee_age(name: str = None, employee_no: str = None):
         if rec is None:
             return {"error": f"未找到工号为 {employee_no} 的员工数据。"}
         if rec["age"] is None:
-            return {"name": rec["employee_name"], "hire_date": rec["hire_date"],
+            return {"name": rec["employee_name"], "tenure_years": rec["tenure_years"],
                     "error": "该员工出生日期缺失，无法计算年龄。"}
         if rec["tenure_years"] is None:
-            return {"name": rec["employee_name"], "birth_date": rec["birth_date"],
+            return {"name": rec["employee_name"], "age": rec["age"],
                     "error": "该员工入职时间缺失，无法计算工龄。"}
 
         return {"name": rec["employee_name"], "age": rec["age"], "tenure_years": rec["tenure_years"]}
@@ -167,6 +167,16 @@ def get_employee_attendance(work_date: str, name: str = None, employee_no: str =
         rec = cur.fetchone()
         if rec is None:
             return {"error": f"未找到该员工{work_date} 的考勤信息，请核对姓名或日期。"}
+
+        if rec.get("check_in_time") is not None:
+            rec["check_in_time"] = rec["check_in_time"].strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            rec["check_in_time"] = "未打卡"
+
+        if rec.get("check_out_time") is not None:
+            rec["check_out_time"] = rec["check_out_time"].strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            rec["check_out_time"] = "未打卡"
         return rec
 
     finally:
