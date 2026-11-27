@@ -39,6 +39,10 @@
 `tools/write_ops.py` 提供写操作申请工具（`request_offboard`、`request_update_phone`）。Agent 调用这些工具时**不会直接修改业务表**，而是通过 `submit_change_request()` 生成一条 `PENDING` 状态的工单插入 `change_requests` 表。在插入前，系统会抓取当前数据的 `old_data` 快照，并生成 `idempotency_key` 防重复提交。
 
 工单审批与执行采用**基于状态机的双端解耦架构**（`worker/` 目录）：
+当前的设计将“Agent 端申请”与“Worker 端执行”通过字典注册表（策略模式）解耦。这种设计带来了极高的隔离性，但代价是新增一个写操作工具需要同时修改两处代码： 
+- 1.在 tools/write_ops.py 中新增提交工单的 @tool 函数。
+- 2.在 worker/db_handlers.py 中新增对应的 SQL 执行逻辑，并注册到 action_handlers 字典中。
+(未来优化方向：可将具体执行的 SQL 或目标表信息作为元数据直接写在工单的 payload 中，由执行端实现通用的数据变更逻辑，从而免去 Worker 端的代码修改。)
 
 - **审批端 (`worker/review_service.py`)**：常驻轮询 `PENDING` 或 `HOLD` 工单（每次 `LIMIT 10` 遍历）。终端展示原数据快照与目标修改对比，支持操作：(y) 批准、(n) 拒绝、(p) 挂起(HOLD)。审批端仅负责状态流转，不执行具体 SQL。
 - **执行端 (`worker/execute_service.py`)**：常驻轮询 `APPROVED` 工单。通过 `UPDATE ... WHERE status = 'APPROVED'` 实现**乐观锁抢单防并发**。执行逻辑通过 `worker/db_handlers.py` 中的**字典注册表（策略模式）**解耦调用，避免 `if/elif` 冗长分支。执行后校验 `cur.rowcount` 防止目标不存在或未更新却标记成功的伪逻辑。成功标记 `EXECUTED`，异常则回滚并标记 `FAILED`。
@@ -81,7 +85,7 @@ HR_Agent/
 │   └── db_handlers.py          # 策略模式处理函数（具体业务 SQL 隔离）
 ├── rag/
 │   ├── build_index.py          # 文档加载、切分、向量化和 FAISS 索引构建
-│   ├── embedding_server.py      # BGE-M3 FastAPI Embedding 服务
+│   ├── embedding_server.py     # BGE-M3 FastAPI Embedding 服务
 │   └── policy_tool.py          # FAISS 制度检索工具
 ├── config.py                   # 环境变量和路径配置
 ├── system_prompt.md            # Agent 系统提示词
