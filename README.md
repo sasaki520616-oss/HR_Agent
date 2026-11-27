@@ -81,7 +81,7 @@ HR_Agent/
 │   └── db_handlers.py          # 策略模式处理函数（具体业务 SQL 隔离）
 ├── rag/
 │   ├── build_index.py          # 文档加载、切分、向量化和 FAISS 索引构建
-│   ├── embedding_server.py      # BGE-M3 FastAPI Embedding 服务
+│   ├── embedding_server.py     # BGE-M3 FastAPI Embedding 服务
 │   └── policy_tool.py          # FAISS 制度检索工具
 ├── config.py                   # 环境变量和路径配置
 ├── system_prompt.md            # Agent 系统提示词
